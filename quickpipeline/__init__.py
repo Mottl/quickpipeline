@@ -91,13 +91,16 @@ class QuickPipeline():
         # create a list of categorical features if not set
         if self.categorical_features is None:  # get categorical_features automatically
             self.categorical_features = list(filter(
-                lambda c: (df[c].dtype == object) or (df2 is not None and df2[c].dtype == object),
+                lambda c: c != self.y_column_name
+                    and (
+                        (df[c].dtype == object)
+                        or (df2 is not None and df2[c].dtype == object)
+                    ),
                 df.columns
             ))
-
         # impute missing values in non-categorical features and normalize values:
         for c in df.columns:
-            if c in self.categorical_features:
+            if (c in self.categorical_features) or (c == self.y_column_name):
                 continue
             imputer = Imputer(strategy=self.impute)
             df[c] = imputer.fit_transform(df[c].values.reshape(-1,1))
@@ -187,8 +190,8 @@ class QuickPipeline():
 
         if self.y_column_name is not None:
             if df[self.y_column_name].dtype == object:
-                self.__y_encoder = LabelEncoder()
-                df[self.y_column_name] = self.__y_encoder.fit_transform(df[self.y_column_name])
+                self.y_encoder = LabelEncoder()
+                df[self.y_column_name] = self.y_encoder.fit_transform(df[self.y_column_name])
 
             # move y column to end
             y = df[self.y_column_name]
@@ -203,8 +206,9 @@ class QuickPipeline():
 if __name__ == "__main__":
     s1 = pd.Series([1,2,3,np.nan,4,5], dtype=np.float16)
     s2 = pd.Series(["A","B",np.nan,"A","C","B"])
-    df = pd.DataFrame({"s1": s1, "s2": s2})
+    y = pd.Series(["yes","yes","no","yes","no","no"])
+    df = pd.DataFrame({"s1": s1, "s2": s2, "y": y})
 
-    qp = QuickPipeline(copy=True)
-    df_prepared = qp.fit_transform(df)
+    pipeline = QuickPipeline(y_column_name="y", copy=True)
+    df_prepared = pipeline.fit_transform(df)
     print(df_prepared)
