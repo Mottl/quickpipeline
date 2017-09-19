@@ -31,22 +31,31 @@ class QuickPipeline():
         A list of column names that must be one-hot encoded
 
     y_column_name : str
-        A name of column that is considered as y and must be converted from string to integer
+        A name of column that is considered as y and must be converted from
+        string to integer
 
     impute : str (default='mean')
-        A strategy of imputing missed values; passed to sklearn.preprocessing.Imputer. Default is 
+        A strategy of imputing missed values; passed to
+        sklearn.preprocessing.Imputer.
 
     scale : bool (default=True)
         Moves and scales numerical columns to mean=1 and std=1
 
+    max_missing : float (default=0.9)
+        Max missing percentage of feature data. Discards column if percentage
+        exceeds this value
+
     copy : bool (default=True)
         Return a new dataframe instead of modification of input dataframe
     """
-    def __init__(self, categorical_features=None, y_column_name=None, impute='mean', scale=True, copy=True):
+    def __init__(self, categorical_features=None, y_column_name=None,
+                 impute='mean', scale=True, max_missing=0.9, copy=True
+                ):
         self.categorical_features = categorical_features
         self.y_column_name = y_column_name
         self.impute = impute
         self.scale = scale
+        self.max_missing = max_missing
         self.copy = copy
     
     def fit_transform(self, df, df2=None):
@@ -84,7 +93,21 @@ class QuickPipeline():
         if self.copy:
             df = df.copy()
             if df2 is not None:
-                df2 = df2.copy
+                df2 = df2.copy()
+
+        # remove feature if missing data percentage exceeds self.max_missing:
+        for c in df.columns:
+            missing = float(df[c].isnull().sum())/df.shape[0]
+            if df2 is not None:
+                missing2 = float(df2[c].isnull().sum())/df2.shape[0]
+            else:
+                missing2 = 0
+
+            if missing > self.max_missing or missing2 > self.max_missing:
+                del df[c]
+                if df2 is not None:
+                    del df2[c]
+                continue
 
         # create a list of categorical features if not set
         if self.categorical_features is None:  # get categorical_features automatically
@@ -100,6 +123,7 @@ class QuickPipeline():
         for c in df.columns:
             if (c in self.categorical_features) or (c == self.y_column_name):
                 continue
+
             imputer = Imputer(strategy=self.impute)
             df[c] = imputer.fit_transform(df[c].values.reshape(-1,1))
             scaler = StandardScaler()
