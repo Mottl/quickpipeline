@@ -73,10 +73,8 @@ class QuickPipeline():
             df_columns = set(df.columns)
             df2_columns = set(df2.columns)
             if self.y_column_name is not None:
-                if self.y_column_name in df_columns:
-                    del df_columns[self.y_column_name]
-                if self.y_column_name in df2_columns:
-                    del df2_columns[self.y_column_name]
+                df_columns.discard(self.y_column_name)
+                df2_columns.discard(self.y_column_name)
                 if len(df_columns ^ df2_columns) != 0:
                     raise ValueError('df and df2 columns mismatch')
                     
@@ -118,14 +116,14 @@ class QuickPipeline():
         for c in self.categorical_features:
             df[c] = df[c].fillna('~~~')  # fills with '~~~'
             if df2 is not None:
-                df[c] = df[c].fillna('~~~')  # fills with '~~~'
+                df2[c] = df2[c].fillna('~~~')  # fills with '~~~'
 
             uniques = set(df[c].unique())
             if df2 is not None:
-                uniques += set(df2[c].unique())
+                uniques |= set(df2[c].unique())
                 
             if len(uniques) == 1:
-                # remove columns that do not contains useful data
+                # remove columns that do not contain useful data
                 del df[c]
                 if df2 is not None:
                     del df2[c]
@@ -140,7 +138,7 @@ class QuickPipeline():
                 # get all possible values from a given column and fit LabelEncoder
                 categories = set(df[c].unique())
                 if df2 is not None:
-                    categories += set(df2[c].unique())
+                    categories |= set(df2[c].unique())
                 categories = sorted(categories)
 
                 labels = [c+'_'+cat if cat!='~~~' else '~~~' for cat in categories]  # column labels
@@ -185,8 +183,8 @@ class QuickPipeline():
                         del one_hot_dataframe['~~~']
 
                     del df2[c]
-                    for c1 in one_hot_dataframe2.columns:
-                        df2[c1] = one_hot_dataframe2[c1]
+                    for c1 in one_hot_dataframe.columns:
+                        df2[c1] = one_hot_dataframe[c1]
 
         if self.y_column_name is not None:
             if df[self.y_column_name].dtype == object:
