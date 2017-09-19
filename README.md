@@ -5,7 +5,7 @@ quickpipeline is a python module for quick preprocessing of features for further
 ```python
 import pandas as pd
 import numpy as np
-from quickpipeline as QuickPipeline
+from quickpipeline import QuickPipeline
 
 # prepare example pandas DataFrame:
 s1 = pd.Series([1,2,3,np.nan,4,5], dtype=np.float16)
