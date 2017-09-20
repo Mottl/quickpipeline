@@ -24,8 +24,8 @@ class QuickPipeline():
     Performs the following tasks on input pandas dataframes:
     1. Fills empty data in a dataframe;
     2. Converts categorical columns to one-hot columns or binary columns;
-    4. Deskews, moves and scales numerical columns to mean=1 and std=1;
-    5. Drop uncorrelated and unuseful columns.
+    3. Deskews, moves and scales numerical columns to mean=1 and std=1;
+    4. Drops uncorrelated and unuseful columns.
 
     Parameters
     ----------
