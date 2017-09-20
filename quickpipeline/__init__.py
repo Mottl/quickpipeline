@@ -29,33 +29,34 @@ class QuickPipeline():
     Parameters
     ----------
     categorical_features : array-like
-        A list of column names that must be one-hot encoded
+        A list of column names that must be one-hot encoded.
 
     y_column_name : str
         A name of column that is considered as y and must be converted from
-        string to integer
+        string to integer.
 
     impute : str (default='mean')
         A strategy of imputing missed values; passed to
         sklearn.preprocessing.Imputer.
 
     scale : bool (default=True)
-        Moves and scales numerical columns to mean=1 and std=1
+        Moves and scales numerical columns to mean=1 and std=1.
 
     max_missing : float (default=0.9)
-        Max missing percentage of feature data. Discards column if percentage
-        exceeds this value
+        The maximum percentage of missing data in a column. Discards a column
+        if a percentage exceeds this value.
 
     deskew : float (default=0.2)
         Deskew features with an absolute skewness more than this parameter
-        (see scipy.stats.skew)
+        (see scipy.stats.skew). Set to None to disable deskewing.
 
     copy : bool (default=True)
-        Return a new dataframe instead of modification of input dataframe
+        Return a new dataframe(s) instead of modification the input
+        dataframe(s).
     """
     def __init__(self, categorical_features=None, y_column_name=None,
                  impute='mean', scale=True, max_missing=0.9,
-                 deskew = 0.2, copy=True
+                 deskew=0.2, copy=True
                 ):
         self.categorical_features = categorical_features
         self.y_column_name = y_column_name
@@ -64,6 +65,9 @@ class QuickPipeline():
         self.max_missing = max_missing
         self.deskew = deskew
         self.copy = copy
+
+        # hardcoded thresholds:
+        self.min_unique_for_deskew = 50
     
     def fit_transform(self, df, df2=None):
         '''
@@ -104,6 +108,8 @@ class QuickPipeline():
 
         # remove feature if missing data percentage exceeds self.max_missing:
         for c in df.columns:
+            if c == self.y_column_name:
+                continue
             missing = float(df[c].isnull().sum())/df.shape[0]
             if df2 is not None:
                 missing2 = float(df2[c].isnull().sum())/df2.shape[0]
@@ -128,16 +134,21 @@ class QuickPipeline():
             ))
 
         # find and correct skewed features
+        self.deskewed_features = list()
         if self.deskew != 0.0 and self.deskew is not None:
-            numeric_features = df.dtypes[df.dtypes != object].index
+            numeric_features = list(df.dtypes[df.dtypes != object].index)
             if self.y_column_name in numeric_features:
-                del numeric_features[self.y_column_name]
+                del numeric_features[numeric_features.index(self.y_column_name)]
 
             skewness = df[numeric_features].apply(lambda s: skew(s.dropna().astype(np.float_)))
             skewed_positive = skewness[skewness>self.deskew].index
             skewed_negative = skewness[skewness<-self.deskew].index
 
             for c in skewed_positive:
+                # skip if a number of unique values are too low
+                if df[c].nunique() < self.min_unique_for_deskew:
+                    continue
+
                 if min(df[c])<=0:  # skip if negative values found
                     continue
                 if (df2 is not None) and (min(df2[c])<=0):
@@ -146,10 +157,12 @@ class QuickPipeline():
                 if df2 is not None:
                     df2[c] = np.log(df2[c])
 
-            for c in skewed_negative:
-                df[c] = np.exp(df[c])
-                if df2 is not None:
-                    df2[c] = np.exp(df2[c])
+                self.deskewed_features.append(c)
+
+            #for c in skewed_negative:
+            #    df[c] = np.exp(df[c])
+            #    if df2 is not None:
+            #        df2[c] = np.exp(df2[c])
 
         # impute missing values in non-categorical features and normalize values:
         for c in df.columns:
@@ -159,7 +172,7 @@ class QuickPipeline():
             imputer = Imputer(strategy=self.impute)
             df[c] = imputer.fit_transform(df[c].values.reshape(-1,1))
             scaler = StandardScaler()
-            scaler.fit_transform(df[c].values.reshape(-1,1))
+            df[c] = scaler.fit_transform(df[c].values.reshape(-1,1))
             if df2 is not None:
                 df2[c] = imputer.transform(df2[c].values.reshape(-1,1))
                 df2[c] = scaler.transform(df2[c].values.reshape(-1,1))
