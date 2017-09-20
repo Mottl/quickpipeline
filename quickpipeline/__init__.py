@@ -232,7 +232,7 @@ class QuickPipeline():
                     data=one_hot_matrix.toarray(), # convert sparse matrix to 2dim array
                     index=df.index,
                     columns=labels,
-                    dtype=np.int32
+                    dtype=np.int8
                 )
 
                 # remove `missing values` column form one_hot_dataframe
@@ -252,7 +252,7 @@ class QuickPipeline():
                         data=one_hot_matrix.toarray(),
                         index=df2.index,
                         columns=labels,
-                        dtype=np.int32
+                        dtype=np.int8
                     )
 
                     if '~~~' in one_hot_dataframe.columns:
