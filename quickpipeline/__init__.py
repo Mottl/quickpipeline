@@ -46,6 +46,10 @@ class QuickPipeline():
         The maximum percentage of missing data in a column. Discards a column
         if a percentage exceeds this value.
 
+    min_correlation : float (default=None)
+        Absolute minimum correlation coefficient between feature and y column.
+        Feature column droped if absolute correlation is lower than this value.
+
     deskew : float (default=0.2)
         Deskew features with an absolute skewness more than this parameter
         (see scipy.stats.skew). Set to None to disable deskewing.
@@ -55,7 +59,8 @@ class QuickPipeline():
         dataframe(s).
     """
     def __init__(self, categorical_features=None, y_column_name=None,
-                 impute='mean', scale=True, max_missing=0.9,
+                 impute='mean', scale=True,
+                 max_missing=0.9, min_correlation=None,
                  deskew=0.2, copy=True
                 ):
         self.categorical_features = categorical_features
@@ -63,6 +68,7 @@ class QuickPipeline():
         self.impute = impute
         self.scale = scale
         self.max_missing = max_missing
+        self.min_correlation = min_correlation
         self.deskew = deskew
         self.copy = copy
 
@@ -164,7 +170,7 @@ class QuickPipeline():
             #    if df2 is not None:
             #        df2[c] = np.exp(df2[c])
 
-        # impute missing values in non-categorical features and normalize values:
+        # impute missing values in numeric features and normalize values:
         for c in df.columns:
             if (c in self.categorical_features) or (c == self.y_column_name):
                 continue
@@ -254,6 +260,16 @@ class QuickPipeline():
                     del df2[c]
                     for c1 in one_hot_dataframe.columns:
                         df2[c1] = one_hot_dataframe[c1]
+
+        if (self.min_correlation is not None) and (self.y_column_name is not None):
+            correlation = df.corr()[self.y_column_name]
+            self.non_correlative = correlation[
+                (correlation<self.min_correlation)
+                & (correlation>-self.min_correlation)
+            ].index.values
+            df.drop(self.non_correlative, axis=1, inplace=True)
+            if df2 is not None:
+                df2.drop(self.non_correlative, axis=1, inplace=True)
 
         if self.y_column_name is not None:
             if df[self.y_column_name].dtype == object:
