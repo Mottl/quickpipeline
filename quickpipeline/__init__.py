@@ -15,6 +15,7 @@ from sklearn.preprocessing import (
     Imputer, StandardScaler,
     LabelEncoder, OneHotEncoder, LabelBinarizer
 )
+from scipy.stats import skew
 
 class QuickPipeline():
     """
@@ -45,17 +46,23 @@ class QuickPipeline():
         Max missing percentage of feature data. Discards column if percentage
         exceeds this value
 
+    deskew : float (default=0.2)
+        Deskew features with an absolute skewness more than this parameter
+        (see scipy.stats.skew)
+
     copy : bool (default=True)
         Return a new dataframe instead of modification of input dataframe
     """
     def __init__(self, categorical_features=None, y_column_name=None,
-                 impute='mean', scale=True, max_missing=0.9, copy=True
+                 impute='mean', scale=True, max_missing=0.9,
+                 deskew = 0.2, copy=True
                 ):
         self.categorical_features = categorical_features
         self.y_column_name = y_column_name
         self.impute = impute
         self.scale = scale
         self.max_missing = max_missing
+        self.deskew = deskew
         self.copy = copy
     
     def fit_transform(self, df, df2=None):
@@ -119,6 +126,31 @@ class QuickPipeline():
                     ),
                 df.columns
             ))
+
+        # find and correct skewed features
+        if self.deskew != 0.0 and self.deskew is not None:
+            numeric_features = df.dtypes[df.dtypes != object].index
+            if self.y_column_name in numeric_features:
+                del numeric_features[self.y_column_name]
+
+            skewness = df[numeric_features].apply(lambda s: skew(s.dropna().astype(np.float_)))
+            skewed_positive = skewness[skewness>self.deskew].index
+            skewed_negative = skewness[skewness<-self.deskew].index
+
+            for c in skewed_positive:
+                if min(df[c])<=0:  # skip if negative values found
+                    continue
+                if (df2 is not None) and (min(df2[c])<=0):
+                    continue
+                df[c] = np.log(df[c])
+                if df2 is not None:
+                    df2[c] = np.log(df2[c])
+
+            for c in skewed_negative:
+                df[c] = np.exp(df[c])
+                if df2 is not None:
+                    df2[c] = np.exp(df2[c])
+
         # impute missing values in non-categorical features and normalize values:
         for c in df.columns:
             if (c in self.categorical_features) or (c == self.y_column_name):
