@@ -1,5 +1,11 @@
 # quickpipeline
-quickpipeline is a python module for quick preprocessing of features for further use in machine learning tasks
+**quickpipeline** is a python module for quick preprocessing of features for further use in machine learning tasks
+
+**quickpipeline** performs the following tasks on input pandas dataframes:
+1. Fills empty data in a dataframe;
+2. Converts categorical columns to one-hot columns or binary columns;
+3. Deskews, moves and scales numerical columns to mean=1 and std=1;
+4. Drops uncorrelated and unuseful columns.
 
 ## Usage:
 ```python
