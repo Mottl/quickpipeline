@@ -113,6 +113,15 @@ class QuickPipeline():
             if df2 is not None:
                 df2 = df2.copy()
 
+        # convert pandas categorical columns to string
+        for c in df.columns:
+            if pd.api.types.is_categorical_dtype(df[c]):
+                df[c] = df[c].astype(str)
+        if df2 is not None:
+            for c in df2.columns:
+                if pd.api.types.is_categorical_dtype(df2[c]):
+                    df2[c] = df2[c].astype(str)
+
         # remove feature if missing data percentage exceeds self.max_missing:
         for c in df.columns:
             if c == self.y_column_name:
